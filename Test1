@@ -1,0 +1,42 @@
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import f1_score
+
+train_data = pd.read_csv('train.csv')
+test_data = pd.read_csv('test.csv')
+
+train_data.drop(columns=['ID'], inplace=True)
+test_ids = test_data['ID']
+test_data.drop(columns=['ID'], inplace=True)
+
+X = train_data.drop(columns=['Target'])
+y = train_data['Target']
+
+label_encoders = {}
+for col in ['Distributor', 'Product', 'Destination', 'Gender']:
+    le = LabelEncoder()
+    X[col] = le.fit_transform(X[col])
+    test_data[col] = le.transform(test_data[col])
+    label_encoders[col] = le
+
+scaler = StandardScaler()
+num_cols = ['Duration', 'Sales', 'Commission', 'Age']
+X[num_cols] = scaler.fit_transform(X[num_cols])
+test_data[num_cols] = scaler.transform(test_data[num_cols])
+
+X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
+
+model = RandomForestClassifier(n_estimators=100, random_state=42)
+model.fit(X_train, y_train)
+
+y_pred_val = model.predict(X_val)
+f1 = f1_score(y_val, y_pred_val, average='weighted')
+print(f"Validation Weighted F1 Score: {f1}")
+
+test_predictions = model.predict(test_data)
+
+submission = pd.DataFrame({'ID': test_ids, 'Target': test_predictions})
+submission.to_csv('submission.csv', index=False)
+print("submission.csv saved")
